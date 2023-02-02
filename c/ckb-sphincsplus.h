@@ -4,24 +4,35 @@
 
 #include "context.h"
 #include "params.h"
-#include "utils.h"
 #include "thash.h"
+#include "utils.h"
 
 //
 // #include "thash_shake_robust.c"
 
 // //
 #include "api.h"
-#include "wotsx1.h"
 #include "fors.h"
+#include "wotsx1.h"
 
 #define SPX_MLEN 32
+#ifndef CKB_VM
 
-void wots_gen_pkx1(unsigned char *pk, const spx_ctx *ctx,
-                          uint32_t addr[8]) {
-  struct leaf_info_x1 leaf;
-  unsigned steps[SPX_WOTS_LEN] = {0};
-  INITIALIZE_LEAF_INFO_X1(leaf, addr, steps);
-  wots_gen_leafx1(pk, ctx, 0, &leaf);
+int sphincs_plus_generate_keypair(uint8_t *pk, uint8_t *sk) {
+  return crypto_sign_keypair(pk, sk);
 }
 
+int sphincs_plus_sign(uint8_t *message, uint8_t *sk, uint8_t *out_sign,
+                      size_t *out_sign_len) {
+  return crypto_sign(out_sign, (unsigned long long *)out_sign_len, message,
+                     SPX_MLEN, sk);
+}
+
+#endif  // CKB_VM
+
+int sphincs_plus_verify(uint8_t *sign, size_t sign_len, uint8_t *pubkey) {
+  unsigned char mout[SPX_BYTES + SPX_MLEN] = {0};
+  unsigned long long mlen = 0;
+
+  return crypto_sign_open(mout, &mlen, sign, sign_len, pubkey);
+}

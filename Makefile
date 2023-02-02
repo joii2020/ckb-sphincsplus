@@ -7,36 +7,59 @@ CFLAGS := -fPIC -O3 -fno-builtin-printf -fno-builtin-memcmp -nostdinc -nostartfi
 LDFLAGS := -fdata-sections -ffunction-sections
 
 ifneq ($(TARGET), )
-	CFLAGS := $(CFLAGS) -nostdlib
+	CFLAGS := $(CFLAGS) -nostdlib -Wno-nonnull-compare -DCKB_VM
 else
 	CFLAGS := -fsanitize=address -fsanitize=undefined
 endif
 
-# CFLAGS := $(CFLAGS) -Wall -Werror -Wno-nonnull -Wno-nonnull-compare -Wno-unused-function -g
-# LDFLAGS := $(LDFLAGS) -Wl,-static -Wl,--gc-sections
-
+CFLAGS := $(CFLAGS) -Wall -Werror -Wno-nonnull  -Wno-unused-function -g
+LDFLAGS := $(LDFLAGS) -Wl,-static -Wl,--gc-sections
 
 CFLAGS := $(CFLAGS) -I c -I deps/ckb-c-stdlib/libc -I deps/ckb-c-stdlib
+CFLAGS := $(CFLAGS) -I c/ref
 
-PARAMS = sphincs-shake-256f
+SOURCES_DIR = ref
+
+SOURCES = \
+	c/$(SOURCES_DIR)/address.c \
+	c/$(SOURCES_DIR)/merkle.c \
+	c/$(SOURCES_DIR)/wots.c \
+	c/$(SOURCES_DIR)/wotsx1.c \
+	c/$(SOURCES_DIR)/utils.c \
+	c/$(SOURCES_DIR)/utilsx1.c \
+	c/$(SOURCES_DIR)/fors.c \
+	c/$(SOURCES_DIR)/sign.c \
+	c/$(SOURCES_DIR)/randombytes.c
+
+HEADERS = \
+	c/$(SOURCES_DIR)/params.h \
+	c/$(SOURCES_DIR)/address.h \
+	c/$(SOURCES_DIR)/merkle.h \
+	c/$(SOURCES_DIR)/wots.h \
+	c/$(SOURCES_DIR)/wotsx1.h \
+	c/$(SOURCES_DIR)/utils.h \
+	c/$(SOURCES_DIR)/utilsx1.h \
+	c/$(SOURCES_DIR)/fors.h \
+	c/$(SOURCES_DIR)/api.h \
+	c/$(SOURCES_DIR)/hash.h \
+	c/$(SOURCES_DIR)/thash.h \
+	c/$(SOURCES_DIR)/randombytes.h
+
+# shake
+PARAMS = sphincs-shake-256s
 THASH = robust
 
-SOURCES = c/address.c c/merkle.c c/wots.c c/wotsx1.c c/utils.c c/utilsx1.c c/fors.c c/sign.c c/randombytes.c
-HEADERS = c/params.h c/address.h c/merkle.h c/wots.h c/wotsx1.h c/utils.h c/utilsx1.h c/fors.h c/api.h c/hash.h c/thash.h c/randombytes.h
+SOURCES += c/$(SOURCES_DIR)/fips202.c c/$(SOURCES_DIR)/hash_shake.c c/$(SOURCES_DIR)/thash_shake_$(THASH).c
+HEADERS += c/$(SOURCES_DIR)/fips202.h
 
 CFLAGS := $(CFLAGS) -DPARAMS=$(PARAMS) -DCKB_DECLARATION_ONLY -DCKB_C_STDLIB_PRINTF
-
-SOURCES += c/fips202.c c/hash_shake.c c/thash_shake_$(THASH).c
-HEADERS += c/fips202.h
-
-# SOURCES += deps/ckb-c-stdlib/libc/src/impl.c
 
 ifeq ($(TARGET), )
 run_test: build/sphincsplus_example
 		./build/sphincsplus_example
 else
 run_test: build/sphincsplus_example
-		ckb-debugger --bin ./build/sphincsplus_example
+		ckb-debugger --bin ./build/sphincsplus_example --max-cycles 1000000000000
 endif
 
 build/sphincsplus_example: c/ckb-sphincsplus-example.c $(SOURCES) $(HEADERS)
